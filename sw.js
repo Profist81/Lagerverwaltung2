@@ -1,4 +1,4 @@
-const CACHE = "lager-v2";
+const CACHE = "lager-v3";
 const ASSETS = [
   "/", "/index.html",
   "/manifest.webmanifest",
