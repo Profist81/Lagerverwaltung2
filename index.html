@@ -3,268 +3,221 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lagerverwaltung – Drag&Drop (mobilfreundlich, invoke‑Fix)</title>
-  <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0ea5e9" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <style>
-    :root{
-      --bg:#f6f7fb;--ink:#0f172a;--muted:#64748b;--card:#fff;--brd:#e2e8f0;--ring:#94a3b8;--shadow:0 6px 20px rgba(2,6,23,.08);--radius:14px
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica Neue,Arial;background:var(--bg);color:var(--ink)}
-    .container{max-width:1200px;margin:0 auto;padding:16px}
-    h1{margin:0 0 8px;font-size:22px}
-    h2{margin:0 0 8px;font-size:18px}
-    .muted{color:var(--muted)}
-    .panel{background:var(--card);border:1px solid var(--brd);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px}
-    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
-    .btn{font-size:14px;padding:8px 12px;border:1px solid var(--brd);border-radius:10px;background:#fff;cursor:pointer}
-    .cols{display:flex;gap:12px;overflow-x:auto}
-    .col{min-width:260px;flex:1 0 260px}
-    .col-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-    .col-body{display:flex;flex-direction:column;gap:8px;min-height:160px;border:1px dashed var(--brd);border-radius:12px;padding:8px}
-    .badge{font-size:12px;color:var(--muted)}
-    .card{background:#fff;border:1px solid var(--brd);border-radius:12px;padding:10px;box-shadow:var(--shadow);touch-action:none}
-    .card h3{margin:0 0 6px;font-size:14px}
-    .row2{display:flex;align-items:center;justify-content:space-between;gap:8px}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--muted)}
-    .dragging{opacity:.35}
-    .drop-target{outline:2px dashed var(--ring);outline-offset:2px}
-    .log{max-height:45vh;overflow:auto}
-    .log li{list-style:none;border:1px solid var(--brd);border-radius:10px;padding:8px;margin-bottom:8px}
-    .log .ts{font-size:11px;color:var(--muted)}
-    .test-pass{color:#166534;background:#dcfce7;border:1px solid #86efac;padding:6px 8px;border-radius:8px}
-    .test-fail{color:#991b1b;background:#fee2e2;border:1px solid #fecaca;padding:6px 8px;border-radius:8px}
-  </style>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Lagerverwaltung</title>
 </head>
 <body>
-  <div class="container">
-    <header class="panel" style="margin-bottom:12px">
-      <h1>Lagerverwaltung – Drag & Drop (Demo)</h1>
-      <p class="muted">Langes Antippen (mobil) oder Ziehen (Desktop). Teilmengen per Dialog. Daten bleiben lokal (LocalStorage). PWA‑fähig.</p>
-      <div class="toolbar" id="top-toolbar">
-        <label class="btn">Heimplätze CSV laden<input type="file" id="csvHome" accept=".csv"/></label>
-        <label class="btn">Lagerplätze CSV laden<input type="file" id="csvSlots" accept=".csv"/></label>
-        <button class="btn" id="btnExportCsv">Export CSV</button>
-        <button class="btn" id="btnExportJson">Export JSON</button>
-        <label class="btn">Import JSON<input type="file" id="jsonImport" accept="application/json"/></label>
-        <label class="btn">Icons prüfen<input type="file" style="display:none"/></label>
-        <label class="btn"><input type="checkbox" id="chkLockHome"> Sperre Heimplatz</label>
-        <label class="btn"><input type="checkbox" id="chkOverride"> Override erlauben</label>
-        <button class="btn" id="btnInstall">Installieren</button>
+  <header class="app-header">
+    <h1>Lagerverwaltung</h1>
+    <div class="header-right">
+      <div class="status-badges">
+        <span id="roleBadge" class="badge">Gast</span>
+        <span id="syncBadge" class="badge badge-info" title="Ausstehende Uploads">⟳ 0</span>
+        <span id="onlineBadge" class="badge badge-ok">Online</span>
       </div>
-      <div id="tests" class="toolbar"></div>
-    </header>
+      <div class="admin-controls">
+        <button id="btnAdminLogin" class="btn btn-ghost">Admin Login</button>
+        <button id="btnSetPin" class="btn btn-ghost">PIN setzen</button>
+      </div>
+    </div>
+  </header>
 
-    <section class="panel">
-      <div class="cols" id="cols">
-        <!-- Spalte: Bestände -->
-        <div class="col" data-col="bestand">
-          <div class="col-head"><h2>Bestände</h2><span class="badge" id="cBestand">0</span></div>
-          <div class="col-body" id="col-bestand" data-accept="*"></div>
+  <section class="search-bar">
+    <input id="quickSearch" type="search" inputmode="search" placeholder="LS-Nr. oder Datum (YYYY-MM-DD)" aria-label="Schnellsuche" />
+    <button id="btnSearch" class="btn">Suchen</button>
+  </section>
+
+  <main class="grid">
+    <!-- Erfassung: Wareneingang – ohne Zeichnung -->
+    <section class="card">
+      <header class="card-header">
+        <h2>Wareneingang – ohne Zeichnung</h2>
+      </header>
+      <form id="formInbound" class="form">
+        <label for="lsnr"><strong>Lieferscheinnummer *</strong></label>
+        <div class="field-row">
+          <input id="lsnr" name="lsnr" type="text" required autocomplete="off" />
+          <button id="btnScan" type="button" class="btn btn-ghost" title="Barcode-Scan (optional)">🎯</button>
         </div>
-        <!-- Spalte: Wareneingang -->
-        <div class="col" data-col="we">
-          <div class="col-head"><h2>Wareneingang</h2><span class="badge" id="cWE">0</span></div>
-          <div class="col-body" id="col-we" data-accept="*"></div>
+
+        <label for="supplier"><strong>Lieferant *</strong></label>
+        <input id="supplier" name="supplier" list="supplierList" required autocomplete="off" />
+        <datalist id="supplierList"></datalist>
+
+        <label for="dateDoc"><strong>Datum *</strong></label>
+        <input id="dateDoc" name="dateDoc" type="date" required />
+
+        <div id="dupWarning" class="note note-warn hidden">
+          Doppelte LS-Nr. für Datum/Lieferant erkannt. Teillieferung zulassen?
+          <label class="inline"><input type="checkbox" id="chkForce" /> bewusst anlegen</label>
         </div>
-        <!-- Spalte: Lagerplatz (variabel) -->
-        <div class="col" data-col="lager">
-          <div class="col-head"><h2>Lagerplatz</h2><span class="badge" id="cLager">0</span></div>
-          <div class="col-body" id="col-lager" data-accept="*"></div>
+
+        <div class="row gap">
+          <button id="btnSaveAndShoot" type="submit" class="btn primary">Speichern &amp; fotografieren</button>
+          <button id="btnSaveOnly" type="button" class="btn">Nur speichern</button>
         </div>
-        <!-- Spalte: Pulverbeschichtung -->
-        <div class="col" data-col="pbs">
-          <div class="col-head"><h2>Pulverbeschichtung</h2><span class="badge" id="cPBS">0</span></div>
-          <div class="col-body" id="col-pbs" data-accept="PBS|P|Pulver|Pulverbeschichtung|K|GIB"></div>
-        </div>
-        <!-- Spalte: Roboter -->
-        <div class="col" data-col="robot">
-          <div class="col-head"><h2>Roboter</h2><span class="badge" id="cRob">0</span></div>
-          <div class="col-body" id="col-rob" data-accept="Rob|Roboter|K|GIB"></div>
-        </div>
-        <!-- Spalte: Protokoll -->
-        <div class="col" style="min-width:320px">
-          <div class="col-head"><h2>Protokoll</h2></div>
-          <ol class="log" id="log"></ol>
-        </div>
-      </div>
+      </form>
+
+      <ul id="listOhne" class="list"></ul>
     </section>
-  </div>
 
+    <!-- Wareneingang – mit Zeichnung -->
+    <section class="card">
+      <header class="card-header">
+        <h2>Wareneingang – mit Zeichnung</h2>
+      </header>
+      <ul id="listMit" class="list"></ul>
+    </section>
+
+    <!-- Detail / Treffer -->
+    <section class="card">
+      <header class="card-header">
+        <h2>Treffer &amp; Details</h2>
+      </header>
+      <div id="results" class="results"></div>
+    </section>
+
+    <!-- DnD Board & Einkaufskorb -->
+    <section class="card wide">
+      <header class="card-header">
+        <h2>Bestände &amp; Fluss (Drag &amp; Drop)</h2>
+        <div class="row">
+          <button id="btnAddBin" class="btn">Lagerplatz hinzufügen</button>
+          <label class="switch">
+            <input id="toggleAskPartial" type="checkbox" checked />
+            <span>Teilmenge beim Drop abfragen</span>
+          </label>
+        </div>
+      </header>
+
+      <div id="board" class="board noselect" aria-label="Drag & Drop Zonen">
+        <div class="col dropzone" data-zone="Bestände" data-ask-partial="1">
+          <h3>Bestände</h3>
+          <ul class="items" id="zone-best"></ul>
+        </div>
+        <div class="col dropzone" data-zone="Wareneingang" data-ask-partial="1">
+          <h3>Wareneingang</h3>
+          <ul class="items" id="zone-inbound"></ul>
+        </div>
+        <div class="col dropzone" data-zone="Lagerplatz" data-ask-partial="1">
+          <h3>Lagerplatz</h3>
+          <ul class="items" id="zone-storage"></ul>
+        </div>
+        <div class="col dropzone" data-zone="Pulverbeschichtung" data-ask-partial="1">
+          <h3>Pulverbeschichtung</h3>
+          <ul class="items" id="zone-pbs"></ul>
+        </div>
+        <div class="col dropzone" data-zone="Roboter" data-ask-partial="1">
+          <h3>Roboter</h3>
+          <ul class="items" id="zone-robot"></ul>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <header class="card-header">
+        <h2>Einkaufsliste / Korb</h2>
+        <div class="row">
+          <button id="btnExportCSV" class="btn">CSV exportieren</button>
+          <button id="btnExportPDF" class="btn">PDF exportieren</button>
+          <button id="btnClearCart" class="btn btn-ghost">Korb leeren</button>
+        </div>
+      </header>
+      <table class="table" id="cartTable" aria-label="Einkaufskorb">
+        <thead><tr><th>Menge</th><th>Bezeichnung</th><th>Notiz</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Admin -->
+    <section class="card">
+      <header class="card-header">
+        <h2>Admin</h2>
+      </header>
+      <div class="admin-only" id="adminPanel" hidden>
+        <label class="switch">
+          <input id="toggleHomeLock" type="checkbox" />
+          <span>Sperre Heimatplatz</span>
+        </label>
+        <label class="switch">
+          <input id="toggleOverride" type="checkbox" />
+          <span>Override erlauben</span>
+        </label>
+      </div>
+      <div class="note">Geschützte Schalter nur mit Admin-Status änderbar.</div>
+    </section>
+  </main>
+
+  <!-- Dialogs / Modals -->
+  <dialog id="dlgCamera" class="modal">
+    <form method="dialog" class="modal-body">
+      <header class="modal-header">
+        <h3>Lieferschein fotografieren</h3>
+        <button class="btn btn-ghost close" value="cancel" aria-label="Schließen">✕</button>
+      </header>
+
+      <div id="cameraArea" class="camera">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="canvas" class="hidden"></canvas>
+        <img id="photoPreview" class="hidden" alt="Vorschau" />
+        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+      </div>
+
+      <div id="cameraHints" class="note">
+        Mindestauflösung ≥ 1500 px, unscharfe Bilder werden beanstandet.
+      </div>
+
+      <div class="row gap">
+        <button id="btnTake" type="button" class="btn primary">Weitere Seite</button>
+        <button id="btnRetake" type="button" class="btn">Neu aufnehmen</button>
+        <button id="btnRotate" type="button" class="btn">Drehen</button>
+        <button id="btnDeleteLast" type="button" class="btn btn-ghost">Löschen</button>
+        <button id="btnDone" type="submit" class="btn">Fertig</button>
+      </div>
+
+      <div id="captureList" class="thumbs"></div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgConfirm" class="modal">
+    <form method="dialog" class="modal-body">
+      <p>Zeichnung(en) gedruckt und bei der Ware abgelegt?</p>
+      <menu>
+        <button value="yes" class="btn primary">Ja</button>
+        <button value="no" class="btn">Nein</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="dlgMessage" class="modal">
+    <form method="dialog" class="modal-body">
+      <div id="msgText"></div>
+      <menu>
+        <button value="ok" class="btn primary">OK</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="dlgPrompt" class="modal">
+    <form method="dialog" class="modal-body">
+      <label id="promptLabel"></label>
+      <input id="promptInput" type="text" />
+      <menu>
+        <button value="ok" class="btn primary">OK</button>
+        <button value="cancel" class="btn">Abbrechen</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="app.js" defer></script>
   <script>
-    // ===== 0) Robustes invoke‑Polyfill (fix für "ReferenceError: invoke is not defined") =====
-    try { if (typeof invoke === 'undefined') { var invoke = function(){ return Promise.resolve(null); }; } } catch(e) {}
-    (function(){
-      if (typeof globalThis.invoke !== 'function') globalThis.invoke = function invoke(){ return Promise.resolve(null); };
-      if (typeof window !== 'undefined' && typeof window.invoke !== 'function') window.invoke = globalThis.invoke;
-    })();
-
-    // ===== 1) Service Worker und Install-Button =====
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
-    (function(){
-      let deferredPrompt=null; const btn=document.getElementById('btnInstall');
-      window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt=e; btn.style.display='inline-block'; });
-      btn.addEventListener('click', async ()=>{ try{ await deferredPrompt.prompt(); }catch{} deferredPrompt=null; btn.style.display='none'; });
-      btn.style.display='none';
-    })();
-
-    // ===== 2) Datenmodell (lokal) =====
-    const DBKEY = 'lager-demo-v1';
-    /** Item: {id, art, bezeichnung, menge, heimplatz?, ort} */
-    let state = JSON.parse(localStorage.getItem(DBKEY) || 'null') || {
-      items:[
-        {id:'i1', art:'100001', bezeichnung:'Fußstütze m. Klemmung', menge:20, heimplatz:'H-01', ort:'bestand'},
-        {id:'i2', art:'100002', bezeichnung:'Seitenteil links', menge:8, heimplatz:'H-02', ort:'we'},
-        {id:'i3', art:'100003', bezeichnung:'Deckel M4', menge:100, heimplatz:null, ort:'lager'}
-      ],
-      locks:{home:true, override:false}
-    };
-
-    const els = {
-      cols: {
-        bestand: document.getElementById('col-bestand'),
-        we: document.getElementById('col-we'),
-        lager: document.getElementById('col-lager'),
-        pbs: document.getElementById('col-pbs'),
-        rob: document.getElementById('col-rob'),
-      },
-      counters:{
-        bestand: document.getElementById('cBestand'),
-        we: document.getElementById('cWE'),
-        lager: document.getElementById('cLager'),
-        pbs: document.getElementById('cPBS'),
-        rob: document.getElementById('cRob'),
-      },
-      log: document.getElementById('log'),
-      chkLockHome: document.getElementById('chkLockHome'),
-      chkOverride: document.getElementById('chkOverride'),
-      csvHome: document.getElementById('csvHome'),
-      csvSlots: document.getElementById('csvSlots'),
-      btnExportCsv: document.getElementById('btnExportCsv'),
-      btnExportJson: document.getElementById('btnExportJson'),
-      jsonImport: document.getElementById('jsonImport'),
-      tests: document.getElementById('tests')
-    };
-
-    function persist(){ localStorage.setItem(DBKEY, JSON.stringify(state)); }
-
-    // ===== 3) Render =====
-    function render(){
-      for(const k of Object.keys(els.cols)) els.cols[k].innerHTML='';
-      for(const it of state.items){ els.cols[it.ort]?.appendChild(card(it)); }
-      for(const k of Object.keys(els.counters)){
-        els.counters[k].textContent = state.items.filter(i=>i.ort===k).length;
-      }
-      els.chkLockHome.checked = !!state.locks.home;
-      els.chkOverride.checked = !!state.locks.override;
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(console.error);
+      });
     }
-
-    function card(it){
-      const el=document.createElement('div'); el.className='card'; el.draggable=false; el.dataset.id=it.id;
-      el.innerHTML = `
-        <h3>${escapeHtml(it.bezeichnung)} <span class="mono">(${escapeHtml(it.art)})</span></h3>
-        <div class="row2">
-          <span>Menge: <b>${it.menge}</b>${it.heimplatz?` · Heimplatz: <span class="mono">${escapeHtml(it.heimplatz)}</span>`:''}</span>
-          <span class="mono">Ort: ${it.ort}</span>
-        </div>`;
-      enableDnD(el);
-      return el;
-    }
-
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
-
-    // ===== 4) Drag & Drop (Pointer Events, mobil + Desktop) =====
-    function enableDnD(card){
-      let startX=0,startY=0,ghost=null; let overCol=null;
-      const onDown=(e)=>{ const p=e.touches?e.touches[0]:e; startX=p.clientX; startY=p.clientY; card.classList.add('dragging');
-        ghost=card.cloneNode(true); ghost.style.position='fixed'; ghost.style.left='-9999px'; ghost.style.top='-9999px'; ghost.style.width=card.getBoundingClientRect().width+'px'; ghost.style.opacity='.8'; ghost.style.pointerEvents='none'; document.body.appendChild(ghost);
-        window.addEventListener('pointermove',onMove); window.addEventListener('pointerup',onUp); }
-      const onMove=(e)=>{ const p=e; ghost.style.left=(p.clientX+10)+'px'; ghost.style.top=(p.clientY+10)+'px';
-        const el=document.elementFromPoint(p.clientX,p.clientY); const col=el?.closest?.('.col-body');
-        if(overCol && overCol!==col) overCol.classList.remove('drop-target');
-        if(col){ overCol=col; col.classList.add('drop-target'); }
-      }
-      const onUp=async (e)=>{
-        window.removeEventListener('pointermove',onMove); window.removeEventListener('pointerup',onUp);
-        card.classList.remove('dragging'); ghost?.remove(); overCol?.classList.remove('drop-target');
-        const p=e; const el=document.elementFromPoint(p.clientX,p.clientY); const col=el?.closest?.('.col-body'); if(!col) return;
-        const id=card.dataset.id; const it=state.items.find(x=>x.id===id); const target=col.id.replace('col-','');
-        if(!(await canDrop(it,target))) return;
-        const qty = await askQuantity(it); if(qty===0) return; // Abbruch
-        bookMove(it, target, qty);
-      }
-      card.addEventListener('pointerdown',onDown);
-    }
-
-    async function canDrop(it,target){
-      // Heimplatz-Sperre
-      if(state.locks.home && it.heimplatz && target!=='lager' && target!=='we'){
-        if(!state.locks.override){ alert('Heimplatz gesperrt. Override aktivieren, um trotzdem zu buchen.'); return false; }
-      }
-      // Beispiel-Sperre: PBS akzeptiert nur bestimmte Container (vereinfachtes Matching)
-      if(target==='pbs'){
-        // Hier nur demonstrativ – in echt würdest du auf Containerkennung prüfen
-        return true;
-      }
-      return true;
-    }
-
-    async function askQuantity(it){
-      const s = prompt(`Menge buchen für "${it.bezeichnung}" (aktuell ${it.menge}). Leer oder 0 = Abbruch.`,'');
-      if(s===null) return 0; const n = Number(String(s).trim()); if(!n) return 0; if(n<0) return 0; if(n>it.menge) { alert('Mehr als Bestand – wird als komplette Menge gebucht.'); return it.menge; }
-      return n;
-    }
-
-    function bookMove(it,target,qty){
-      if(qty < it.menge){
-        // Teilmenge: neuen Datensatz erzeugen
-        const rest = it.menge - qty; it.menge = rest; const clone = {...it, id: crypto.randomUUID(), menge: qty, ort: target}; state.items.push(clone);
-      }else{
-        it.ort = target;
-      }
-      persist(); render(); log(`${it.art} → ${target} (${qty})`);
-    }
-
-    function log(msg){ const li=document.createElement('li'); li.innerHTML=`<div>${escapeHtml(msg)}</div><div class="ts">${new Date().toLocaleString()}</div>`; els.log.prepend(li); }
-
-    // ===== 5) CSV / JSON =====
-    function toCSV(){
-      const rows=[["id","art","bezeichnung","menge","heimplatz","ort"]];
-      for(const it of state.items){ rows.push([it.id,it.art,it.bezeichnung,it.menge,it.heimplatz||'',it.ort]); }
-      const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-      const blob = new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8;'}); // UTF‑8 BOM für Umlaute
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lager.csv'; a.click(); URL.revokeObjectURL(a.href);
-    }
-    function exportJson(){ const blob=new Blob([JSON.stringify(state)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lager.json'; a.click(); URL.revokeObjectURL(a.href); }
-    async function importJson(file){ const txt=await file.text(); try{ state=JSON.parse(txt); persist(); render(); }catch{ alert('Ungültiges JSON'); } }
-    els.btnExportCsv.addEventListener('click',toCSV); els.btnExportJson.addEventListener('click',()=>exportJson());
-    els.jsonImport.addEventListener('change',e=>{ const f=e.target.files?.[0]; if(f) importJson(f); e.target.value=''; });
-
-    // (Optional) CSV-Loader für Heimplätze/Lagerplätze – hier nur Platzhalter, Struktur kann später angepasst werden
-    els.csvHome.addEventListener('change', e=>{ e.target.value=''; alert('CSV-Heimplatz-Import: Struktur wird später angebunden.'); });
-    els.csvSlots.addEventListener('change', e=>{ e.target.value=''; alert('CSV-Lagerplatz-Import: Struktur wird später angebunden.'); });
-
-    // Locks
-    els.chkLockHome.addEventListener('change',e=>{ state.locks.home=e.target.checked; persist(); });
-    els.chkOverride.addEventListener('change',e=>{ state.locks.override=e.target.checked; persist(); });
-
-    // ===== 6) Selbsttests =====
-    function test(name,fn){ try{ const ok=!!fn(); badge(name,ok); }catch{ badge(name,false); } }
-    function badge(name,ok){ const el=document.createElement('div'); el.className=ok?'test-pass':'test-fail'; el.textContent=(ok?'✔ ':'✖ ')+name; els.tests.appendChild(el); }
-    function runTests(){ els.tests.innerHTML='';
-      test('invoke vorhanden', ()=> typeof window.invoke==='function');
-      test('Startdaten vorhanden', ()=> state.items.length>=3);
-      test('CSV Export erzeugt BOM', ()=> { const rows=[["a"]]; const csv=rows.map(r=>r.join(',')).join('\r\n'); const blob=new Blob(["\ufeff"+csv]); return blob.size>csv.length; });
-      // Neu: Test 10 – Statuswechsel nur mit Bild (Platzhalter für zukünftiges Modul)
-      test('10: Statuswechsel nur mit Bild (Platzhalter)', ()=> true);
-    }
-
-    // Start
-    render(); runTests();
   </script>
 </body>
 </html>
